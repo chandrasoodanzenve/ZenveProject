@@ -7,11 +7,9 @@ import './VoiceDictation.css'
  * Uses the Web Speech API (SpeechRecognition) — no server, no API key, no cost.
  * Chrome and Edge only, and the page must be served over HTTPS or localhost.
  *
- *   <VoiceDictation
- *     onTranscript={(text) =>
- *       setForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }))
- *     }
- *   />
+ * Controlled: the words land in the target field as they are spoken.
+ *
+ *   <VoiceDictation value={form.notes} onChange={(text) => updateField('notes', text)} />
  */
 
 const FATAL_ERRORS = {
@@ -31,18 +29,24 @@ function formatDuration(seconds) {
   return `${mins}:${secs}`
 }
 
+// Dictated text is appended below whatever was already in the field.
+function compose(base, spoken) {
+  const text = spoken.trim()
+  if (!text) return base
+  return base ? `${base}\n${text}` : text
+}
+
 function VoiceDictation({
   title = 'Voice — Prescription',
-  hint = 'Tap the mic and dictate — it is transcribed straight into the field below.',
-  onTranscript,
+  hint = 'Tap the mic and dictate — the words appear in Notes as you speak.',
+  value = '',
+  onChange,
   disabled = false,
   lang = 'en-IN',
   maxSeconds = 120,
 }) {
-  // 'idle' | 'recording' | 'review'
-  const [status, setStatus] = useState('idle')
+  const [isRecording, setIsRecording] = useState(false)
   const [seconds, setSeconds] = useState(0)
-  const [transcript, setTranscript] = useState('')
   const [interim, setInterim] = useState('')
   const [error, setError] = useState(null)
 
@@ -50,12 +54,27 @@ function VoiceDictation({
   const finalTextRef = useRef('')
   const keepGoingRef = useRef(false)
   const timerRef = useRef(null)
+  // Recognition events can arrive after unmount; they must not write anything.
+  const mountedRef = useRef(true)
+  // Field contents when recording started; dictation is appended to this.
+  const baseRef = useRef('')
+  // Latest value, so handlers bound once still write against fresh text.
+  const valueRef = useRef(value)
+  const onChangeRef = useRef(onChange)
+
+  valueRef.current = value
+  onChangeRef.current = onChange
 
   const supported = Boolean(getSpeechRecognition())
 
   function clearTimer() {
     clearInterval(timerRef.current)
     timerRef.current = null
+  }
+
+  function publish(spoken) {
+    if (!mountedRef.current) return
+    onChangeRef.current?.(compose(baseRef.current, spoken))
   }
 
   // Chrome pauses recognition on silence; restart until the doctor taps stop.
@@ -71,8 +90,10 @@ function VoiceDictation({
 
     clearTimer()
     recognitionRef.current = null
+    // Drop any half-recognised tail; keep only what was finalised.
+    publish(finalTextRef.current)
     setInterim('')
-    setStatus(finalTextRef.current.trim() ? 'review' : 'idle')
+    setIsRecording(false)
   }
 
   function handleResult(event) {
@@ -85,8 +106,8 @@ function VoiceDictation({
         pending += result[0].transcript
       }
     }
-    setTranscript(finalTextRef.current.trimStart())
     setInterim(pending)
+    publish(`${finalTextRef.current}${pending}`)
   }
 
   function handleError(event) {
@@ -102,10 +123,10 @@ function VoiceDictation({
     if (!SpeechRecognition) return
 
     setError(null)
-    setTranscript('')
     setInterim('')
     setSeconds(0)
     finalTextRef.current = ''
+    baseRef.current = valueRef.current
 
     const recognition = new SpeechRecognition()
     recognition.lang = lang
@@ -124,7 +145,7 @@ function VoiceDictation({
 
     recognitionRef.current = recognition
     keepGoingRef.current = true
-    setStatus('recording')
+    setIsRecording(true)
 
     timerRef.current = setInterval(() => {
       setSeconds((prev) => {
@@ -141,41 +162,27 @@ function VoiceDictation({
     recognitionRef.current?.stop()
   }
 
+  // Undo this dictation: put the field back to what it held before the mic.
   function cancelRecording() {
     keepGoingRef.current = false
     finalTextRef.current = ''
     clearTimer()
     recognitionRef.current?.abort()
-    setTranscript('')
+    onChangeRef.current?.(baseRef.current)
     setInterim('')
     setSeconds(0)
-    setStatus('idle')
+    setIsRecording(false)
   }
 
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       keepGoingRef.current = false
       clearInterval(timerRef.current)
       recognitionRef.current?.abort()
     }
   }, [])
-
-  function insertTranscript() {
-    const text = transcript.trim()
-    if (!text) return
-    onTranscript?.(text)
-    finalTextRef.current = ''
-    setTranscript('')
-    setStatus('idle')
-  }
-
-  function discardTranscript() {
-    finalTextRef.current = ''
-    setTranscript('')
-    setStatus('idle')
-  }
-
-  const isRecording = status === 'recording'
 
   return (
     <section className={`voice-card${isRecording ? ' is-recording' : ''}`}>
@@ -196,7 +203,7 @@ function VoiceDictation({
             {!supported
               ? 'Voice dictation needs Chrome or Edge, on an HTTPS or localhost address.'
               : isRecording
-                ? `Listening… ${formatDuration(seconds)} — tap stop when you are done.`
+                ? `Listening… ${formatDuration(seconds)} — writing into Notes below.`
                 : hint}
           </p>
         </div>
@@ -212,30 +219,10 @@ function VoiceDictation({
 
       {isRecording && (
         <p className="voice-live" aria-live="polite">
-          {transcript}
-          <span className="voice-interim">{interim}</span>
-          {!transcript && !interim && <span className="voice-waiting">Start speaking…</span>}
+          {interim ? <span className="voice-interim">{interim}</span> : (
+            <span className="voice-waiting">Start speaking…</span>
+          )}
         </p>
-      )}
-
-      {status === 'review' && (
-        <div className="voice-review">
-          <label htmlFor="voice-transcript">Transcript — edit before inserting</label>
-          <textarea
-            id="voice-transcript"
-            rows={4}
-            value={transcript}
-            onChange={(event) => setTranscript(event.target.value)}
-          />
-          <div className="voice-actions">
-            <button type="button" className="voice-secondary" onClick={discardTranscript}>
-              Discard
-            </button>
-            <button type="button" className="voice-primary" onClick={insertTranscript}>
-              Insert into prescription
-            </button>
-          </div>
-        </div>
       )}
     </section>
   )

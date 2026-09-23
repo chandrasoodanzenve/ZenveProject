@@ -10,6 +10,7 @@ public record PrescriptionRequest(
         LocalDate date,
         String complaint,
         String diagnosis,
-        String notes
+        String notes,
+        PrescriptionStatus status
 ) {
 }

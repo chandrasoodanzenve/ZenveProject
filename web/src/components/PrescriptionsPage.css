@@ -1,6 +1,13 @@
 .prescriptions-page {
   padding: 32px 40px;
-  max-width: 900px;
+  max-width: 1200px;
+}
+
+.prescriptions-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  align-items: start;
 }
 
 .prescriptions-header {
@@ -27,7 +34,8 @@
 
 .prescription-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  /* Reflows on its own, so the date field never overflows a narrow column. */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 16px;
 }
 
@@ -69,19 +77,54 @@
   color: var(--text);
 }
 
+@media (max-width: 1080px) {
+  .prescriptions-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rx-preview {
+    position: static;
+  }
+}
+
 @media (max-width: 720px) {
   .prescriptions-page {
     padding: 24px 20px;
   }
-
-  .prescription-row {
-    grid-template-columns: 1fr;
-  }
 }
 
-.prescription-actions {
+.prescription-savebar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 14px 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 -4px 16px rgba(8, 6, 13, 0.06);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prescription-status {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.prescription-status.is-dirty {
+  color: var(--accent);
+}
+
+.btn-save {
+  padding: 12px 24px;
+  font-size: 15px;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .prescription-error {

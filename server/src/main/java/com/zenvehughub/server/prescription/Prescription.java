@@ -29,24 +29,36 @@ public class Prescription {
     @Lob
     private String notes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private PrescriptionStatus status = PrescriptionStatus.DRAFT;
+
     private Instant createdAt;
+    private Instant updatedAt;
 
     protected Prescription() {
     }
 
     public Prescription(Patient patient, Double weight, LocalDate date, String complaint, String diagnosis,
-                        String notes) {
+                        String notes, PrescriptionStatus status) {
         this.patient = patient;
         this.weight = weight;
         this.date = date;
         this.complaint = complaint;
         this.diagnosis = diagnosis;
         this.notes = notes;
+        this.status = status;
     }
 
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 
     public Long getId() {
@@ -101,7 +113,19 @@ public class Prescription {
         this.notes = notes;
     }
 
+    public PrescriptionStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PrescriptionStatus status) {
+        this.status = status;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

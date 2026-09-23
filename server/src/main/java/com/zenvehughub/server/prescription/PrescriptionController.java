@@ -31,4 +31,9 @@ public class PrescriptionController {
     public PrescriptionResponse create(@Valid @RequestBody PrescriptionRequest request) {
         return prescriptionService.create(request);
     }
+
+    @PutMapping("/{id}")
+    public PrescriptionResponse update(@PathVariable Long id, @Valid @RequestBody PrescriptionRequest request) {
+        return prescriptionService.update(id, request);
+    }
 }

@@ -13,7 +13,9 @@ public record PrescriptionResponse(
         String complaint,
         String diagnosis,
         String notes,
-        Instant createdAt
+        PrescriptionStatus status,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
     public static PrescriptionResponse from(Prescription prescription) {
@@ -27,7 +29,9 @@ public record PrescriptionResponse(
                 prescription.getComplaint(),
                 prescription.getDiagnosis(),
                 prescription.getNotes(),
-                prescription.getCreatedAt()
+                prescription.getStatus(),
+                prescription.getCreatedAt(),
+                prescription.getUpdatedAt()
         );
     }
 }

@@ -1,11 +1,17 @@
 import './Sidebar.css'
 
 const NAV_ITEMS = [
+  { key: 'dashboard', label: 'Dashboard' },
+ // { key: 'appointments', label: 'Appointments' },
   { key: 'patients', label: 'Patients' },
   { key: 'prescriptions', label: 'Prescriptions' },
+  { key: 'profile', label: 'My profile' },
 ]
 
-function Sidebar({ user, page, onNavigate, onLogout }) {
+function Sidebar({ user, doctor, photoUrl, page, onNavigate, onLogout }) {
+  const name = doctor?.name || user.name || user.email
+  const email = doctor?.email || user.email
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -26,10 +32,20 @@ function Sidebar({ user, page, onNavigate, onLogout }) {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <span className="sidebar-user-name">{user.name || user.email}</span>
-          <span className="sidebar-user-email">{user.email}</span>
-        </div>
+        <button
+          type="button"
+          className="sidebar-user"
+          onClick={() => onNavigate('profile')}
+          title="Open my profile"
+        >
+          <span className="sidebar-user-avatar">
+            {photoUrl ? <img src={photoUrl} alt="" /> : name.trim().charAt(0).toUpperCase()}
+          </span>
+          <span className="sidebar-user-text">
+            <span className="sidebar-user-name">{name}</span>
+            <span className="sidebar-user-email">{email}</span>
+          </span>
+        </button>
         <button type="button" className="sidebar-logout" onClick={onLogout}>
           Log out
         </button>
